@@ -12,7 +12,7 @@ public class NativeMigrator extends Process {
     private static final int SIMULATION_TIME = 3600 * 1;
     private static final int N_HOSTS = 64;
     private static final int N_VMS = N_HOSTS * 10;
-    private static final float MIG_RATE = .8F;
+    private static final float MIG_RATE = .9F;
     // host info
     private static final int HOST_CPU_CAP = 700;
     private static final int HOST_MEM_CAP = 32768;

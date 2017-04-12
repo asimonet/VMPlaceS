@@ -1,0 +1,2 @@
+[day begin: 02:00, end: 06:00, mean: 30, stddev: 30]
+[peak begin: 06:00, end: 10:00, mean: 80, stddev: 20]

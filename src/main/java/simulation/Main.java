@@ -178,7 +178,7 @@ public class Main {
         Msg.run();
 
         System.out.println("Launcher: end of Msg.run()" + new Date().toString());
-        Trace.close();
+
         Msg.info("End of run");
 
         notify(String.format("End of simulation %s", SimulatorProperties.getImplementation()));

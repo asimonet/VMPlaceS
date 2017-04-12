@@ -30,7 +30,7 @@ public class CentralizedResolver extends Process {
      * A stupid main to easily comment main2 ;)
 	 */
     public void main(String[] args) throws MsgException{
-       //main2(args);
+       main2(args);
     }
     public void main2(String[] args) throws MsgException {
         double period = CentralizedResolverProperties.getSchedulingPeriodicity();
@@ -46,21 +46,21 @@ public class CentralizedResolver extends Process {
 
         try{
 
-            SimulatorManager.setSchedulerActive(true);
             int i = 0;
-
 
             double wait = period - previousDuration;
             if (wait > 0)
                 waitFor(wait);
 
             while (!SimulatorManager.isEndOfInjection()) {
+                SimulatorManager.setSchedulerActive(true);
                 Msg.info("Centralized resolver. Pass " + (++i));
 			    /* Compute and apply the plan */
                 Collection<XHost> hostsToCheck = SimulatorManager.getSGHostingHosts();
                 scheduler = SchedulerBuilder.getInstance().build(hostsToCheck, ++loopID);
                 schedulerResult = scheduler.checkAndReconfigure(hostsToCheck);
                 previousDuration = schedulerResult.duration / 1000;
+                SimulatorManager.setSchedulerActive(false);
                 if (schedulerResult.state == SchedulerResult.State.NO_RECONFIGURATION_NEEDED) {
                     Msg.info("No Reconfiguration needed (duration: " + previousDuration + ")");
                 } else if (schedulerResult.state== SchedulerResult.State.NO_VIABLE_CONFIGURATION) {
@@ -74,18 +74,16 @@ public class CentralizedResolver extends Process {
                     numberOfSucess++;
                 }
 
-
                wait = period - previousDuration;
                 if (wait > 0)
                     waitFor(wait);
-
             }
         } catch(HostFailureException e){
             System.err.println(e);
             System.exit(-1);
         }
+
         Msg.info(SimulatorProperties.getImplementation() + " has been invoked "+loopID+" times (success:"+ numberOfSucess+", failed: "+numberOfCrash+", brokenplan:"+numberOfBrokenPlan+")");
-        SimulatorManager.setSchedulerActive(false);
     }
 
 }

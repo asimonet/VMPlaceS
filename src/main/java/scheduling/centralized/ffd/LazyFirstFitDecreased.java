@@ -3,9 +3,11 @@ package scheduling.centralized.ffd;
 import configuration.SimulatorProperties;
 import configuration.XHost;
 import configuration.XVM;
+import org.simgrid.msg.Msg;
 import simulation.SimulatorManager;
 
 import java.util.*;
+import java.util.function.Predicate;
 
 public class LazyFirstFitDecreased extends FirstFitDecreased {
     private float threshold = 1.0F;
@@ -20,7 +22,7 @@ public class LazyFirstFitDecreased extends FirstFitDecreased {
     }
 
     @Override
-    protected void manageOverloadedHost(List<XHost> overloadedHosts, ComputingResult result) {
+    protected void manageOverloadedHost(List<XHost> overloadedHosts, List<XHost> underloadedHosts, ComputingResult result) {
         // The VMs are sorted by decreasing size of CPU and RAM capacity
         TreeSet<XVM> toSchedule = new TreeSet<>(new XVMComparator(true, useLoad));
         Map<XVM, XHost> sources = new HashMap<>();
@@ -44,21 +46,39 @@ public class LazyFirstFitDecreased extends FirstFitDecreased {
             }
         }
 
-        for(XVM vm: toSchedule) {
-            XHost dest = null;
 
-            // Try find a new host for the VMs (saneHosts is not sorted)
-            for(XHost host: SimulatorManager.getSGHostingHosts()) {
-                if(host.getCPUCapacity() >= predictedCPUDemand.get(host) + vm.getCPUDemand() &&
-                        host.getMemSize() >= predictedMemDemand.get(host) + vm.getMemSize()) {
-                    dest = host;
-                    break;
-                }
+        for(XHost host: underloadedHosts) {
+            for(XVM vm: host.getRunnings()) {
+                toSchedule.add(vm);
+                sources.put(vm, host);
             }
+        }
 
-            if(dest == null) {
-                result.state = ComputingResult.State.RECONFIGURATION_FAILED;
-                return;
+        for(XVM vm: toSchedule) {
+
+            // Try find a new host for the VMs, but give priority to the source host
+            // (only if this scheduling is not forced, in which case we don't try to
+            // minimize the number of migrations.
+            XHost dest = null;
+            Iterator<XHost> candidates = SimulatorManager.getSGHostingHosts().iterator();
+            /*
+            if(underloadedHosts.contains(sources.get(vm)))
+                dest = candidates.next();
+            else
+                dest = sources.get(vm);
+            */
+            dest = candidates.next();
+
+            // If the vm does not fit on the source node, pick another one
+            while(dest.getCPUCapacity() < predictedCPUDemand.get(dest) + vm.getCPUDemand() ||
+                    dest.getMemSize() < predictedMemDemand.get(dest) + vm.getMemSize()) {
+                if(candidates.hasNext()) {
+                    dest = candidates.next();
+                }
+                else {
+                    result.state = ComputingResult.State.RECONFIGURATION_FAILED;
+                    return;
+                }
             }
 
             // Schedule the migration
@@ -67,6 +87,25 @@ public class LazyFirstFitDecreased extends FirstFitDecreased {
             XHost source = sources.get(vm);
             if(!source.getName().equals(dest.getName())) {
                 migrations.add(new Migration(vm, source, dest));
+            }
+        }
+
+        // Check whether the usage score will be higher after the reconfiguration.
+        // If not, drop it
+        if(underloadedHosts.size() > 0) {
+            double currentScore = computeUsage(underloadedHosts, false);
+            double predictedScore = computeUsage(underloadedHosts, true);
+            Msg.info(String.format("FirstFitDecreased cluster usage score (current/predicted): %.2f/%.2f",
+                    currentScore, predictedScore));
+
+            if (currentScore > 0 && predictedScore <= currentScore) {
+                Msg.info("Dropping reconfiguration for under-used hosts");
+                migrations.removeIf(new Predicate<Migration>() {
+                    @Override
+                    public boolean test(Migration migration) {
+                        return underloadedHosts.contains(migration.src);
+                    }
+                });
             }
         }
     }

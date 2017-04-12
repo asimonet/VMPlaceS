@@ -23,7 +23,7 @@ public class OptimisticFirstFitDecreased extends FirstFitDecreased {
     }
 
     @Override
-    protected void manageOverloadedHost(List<XHost> overloadedHosts, ComputingResult result) {
+    protected void manageOverloadedHost(List<XHost> overloadedHosts, List<XHost> underloadedHosts, ComputingResult result) {
         // TODO revert to TreeSet
         //TreeSet<XVM> toSchedule = new TreeSet<>(new XVMComparator(true, useLoad));
         ArrayList<XVM> toSchedule = new ArrayList<>();

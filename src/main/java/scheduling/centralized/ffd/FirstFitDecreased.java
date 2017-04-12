@@ -6,6 +6,7 @@ import configuration.XVM;
 import org.simgrid.msg.*;
 import org.simgrid.msg.Process;
 import scheduling.AbstractScheduler;
+import scheduling.centralized.CentralizedResolverProperties;
 import simulation.SimulatorManager;
 
 import java.io.BufferedWriter;
@@ -15,6 +16,8 @@ import java.io.IOException;
 import java.util.*;
 
 public abstract class FirstFitDecreased extends AbstractScheduler {
+    private static int pass = -1;
+
     protected int nMigrations = 0;
 
     protected boolean useLoad;
@@ -37,6 +40,7 @@ public abstract class FirstFitDecreased extends AbstractScheduler {
         this.useLoad = SimulatorProperties.getUseLoad();
         this.migrations = new ArrayDeque<>();
         this.id=id;
+        pass += 1;
     }
 
     @Override
@@ -94,6 +98,47 @@ public abstract class FirstFitDecreased extends AbstractScheduler {
         Msg.info("Reconfiguration done");
     }
 
+    protected double computeUsage(XHost h, boolean prediction) {
+        double cpuDemand = h.getCPUDemand();
+        int memDemand = h.getMemDemand();
+
+        if(prediction) {
+            cpuDemand = predictedCPUDemand.get(h);
+            memDemand = predictedMemDemand.get(h);
+        }
+
+        double cpu = 1 - ((h.getCPUCapacity()) - cpuDemand) / h.getCPUCapacity();
+        double ram = 1 - ((h.getMemSize() - memDemand) / (float) h.getMemSize());
+        return Math.max(cpu, ram);
+    }
+
+    protected double computeUsage(XHost host) {
+        return computeUsage(host, false);
+    }
+
+    protected double computeUsage(Collection<XHost> hosts, boolean prediction) {
+        int n = 0;
+        float sum = 0F;
+
+        for(XHost host: hosts) {
+            if(host.isOff())
+                continue;
+
+            // If we are predicting a 0% usage, do no count it: the node will
+            // be turned off
+            double usage = computeUsage(host, prediction);
+            if(!prediction || (prediction && usage > 0)) {
+                n++;
+                sum += usage;
+            }
+        }
+
+        if(n > 0)
+            return sum / n;
+        else
+            return -1D;
+    }
+
     @Override
     public ComputingResult computeReconfigurationPlan() {
         ComputingResult result = new ComputingResult();
@@ -101,14 +146,25 @@ public abstract class FirstFitDecreased extends AbstractScheduler {
 
         ArrayList<XHost> overloaded = new ArrayList<>();
 
-        // Find the overloaded hosts
+        // Find the overloaded hosts or force a reconfiguration
+        // when at least 30% of the host are used less than 50%
+        List<XHost> underLoaded = new ArrayList<>();
+
         for(XHost host : hostsToCheck) {
+            double usage = computeUsage(host);
             double demand = host.computeCPUDemand();
             if(host.getCPUCapacity() < demand || host.getMemSize() < host.getMemDemand())
                 overloaded.add(host);
+            else {
+                if (pass > 0 && host.isOn() && host.getCPUCapacity() > host.getCPUDemand()
+                        && usage < 0.5) {
+                    underLoaded.add(host);
+                    //Msg.info(String.format("%s is underloaded: %.2f", host.getName(), usage));
+                }
+            }
         }
 
-        manageOverloadedHost(overloaded, result);
+        manageOverloadedHost(overloaded, underLoaded, result);
 
         if(!migrations.isEmpty())
             result.state = ComputingResult.State.SUCCESS;
@@ -116,12 +172,10 @@ public abstract class FirstFitDecreased extends AbstractScheduler {
             result.state = ComputingResult.State.NO_RECONFIGURATION_NEEDED;
 
         result.duration = ((double) System.currentTimeMillis() - start);
-       // Msg.info(String.format("My duration: %d - %d = %d", System.currentTimeMillis(), start, System.currentTimeMillis() - start));
-
         return result;
     }
 
-    protected abstract void manageOverloadedHost(List<XHost> overloadedHosts, ComputingResult result);
+    protected abstract void manageOverloadedHost(List<XHost> overloadedHosts, List<XHost> underloadedHosts, ComputingResult result);
 
 
     class XHostComparator implements Comparator<XHost> {

@@ -55,20 +55,24 @@ function run() {
 			;;
 	esac
 
-	n_vms=$(($n_nodes * 10))
-	mean=60
-	std=20
+	n_vms=$(($n_nodes * 8))
+	mean=20
+	std=10
 
 	SIM_ARGS="-Dsimulator.algorithm=$algo $implem"
 	SIM_ARGS="$SIM_ARGS -Dhostingnodes.number=$n_nodes"
 	SIM_ARGS="$SIM_ARGS -Dservicenodes.number=$n_service"
 	SIM_ARGS="$SIM_ARGS -Dvm.number=$n_vms"
 	SIM_ARGS="$SIM_ARGS -Dhostingnodes.cpunumber=8"
+	SIM_ARGS="$SIM_ARGS -Dhostingnodes.cpucapacity=800"
 	SIM_ARGS="$SIM_ARGS -Dhostingnodes.memorytotal=32768"
 	SIM_ARGS="$SIM_ARGS -Dhosts.turn_off=$turn_off"
 	SIM_ARGS="$SIM_ARGS -Dload.mean=$mean"
 	SIM_ARGS="$SIM_ARGS -Dload.std=$std"
+	SIM_ARGS="$SIM_ARGS -Dload.file=config/24_hours.txt"
 	SIM_ARGS="$SIM_ARGS -Dsimulator.ffd.threshold=$threshold"
+	SIM_ARGS="$SIM_ARGS -Dsimulator.duration=86400"
+	SIM_ARGS="$SIM_ARGS -Dsimulation.energy.log=energy.dat"
 
 	echo '----------------------------------------'
 	echo "Running $algo $implem with $n_nodes compute and $n_service service nodes turning off hosts: $turn_off, load.mean=$mean, load.std=$std"
@@ -98,11 +102,12 @@ function run() {
 
 # Number of hosting nodes
 nodes='64'
-thresholds='100 90 80 70 60 50'
+#thresholds='100 90 80 70 60 50'
+thresholds='0'
 abort=0
 
 rm -rf logs/ffd
-rm -i energy.dat
+rm energy.dat run_all.log
 
 {
 	for n in $nodes; do

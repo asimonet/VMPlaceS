@@ -162,19 +162,19 @@ public abstract class AbstractScheduler implements Scheduler {
                     SchedulerResult.State.RECONFIGURATION_PLAN_ABORTED : SchedulerResult.State.SUCCESS;
 
             Trace.hostPopState(Host.currentHost().getName(), "SERVICE"); //PoP reconfigure;
-
-
-            if(SimulatorProperties.getHostsTurnoff()) {
-                for (XHost host : SimulatorManager.getSGTurnOnHostingHosts()) {
-                    if (host.getRunnings().size() == 0)
-                        SimulatorManager.turnOff(host);
-                }
-            }
-
         } else {
             Msg.info(SimulatorProperties.getAlgo() + "-"+ SimulatorProperties.getImplementation() +" did not find any viable solution");
             enRes.state = SchedulerResult.State.NO_VIABLE_CONFIGURATION;
         }
+
+        if(SimulatorProperties.getHostsTurnoff()) {
+            for (XHost host : SimulatorManager.getSGTurnOnHostingHosts()) {
+                if (host.getRunnings().size() == 0)
+                    SimulatorManager.turnOff(host);
+            }
+        }
+
+        SimulatorManager.writeCurrentConfiguration();
 
 		/* Tracing code */
         for (XHost h : hostsToCheck)

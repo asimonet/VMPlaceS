@@ -26,12 +26,14 @@ excludeFilter in unmanagedSources := new sbt.FileFilter{
   def accept(f: File): Boolean = "(?s).*scheduling/distributed/dvms/.*".r.pattern.matcher(f.getAbsolutePath).matches
 }
 
+unmanagedJars in Compile += file("../simgrid/simgrid.jar")
+
 seq(assemblySettings: _*)
 
-mainClass in assembly := Some("simulation.Main")
+mainClass in (Compile, run) := Some("simulation.Main")
 
 excludedJars in assembly <<= (fullClasspath in assembly) map { cp => 
-  cp filter {_.data.getName == "simgrid_full.jar"}
+  cp filter {_.data.getName == "simgrid.jar"}
 }
 
 test in assembly := {}
