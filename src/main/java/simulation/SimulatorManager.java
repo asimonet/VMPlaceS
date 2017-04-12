@@ -139,13 +139,20 @@ public class SimulatorManager {
         }
 
         // Kill all VMs daemons in order to finalize the simulation correctly
+        int nvm = SimulatorManager.getSGVMs().size();
+        int i = 0;
         for (XVM vm : SimulatorManager.getSGVMs()) {
-            Msg.info(vm.getName() + " load changes: "+vm.getNbOfLoadChanges() + "/ migrated: "+vm.getNbOfMigrations());
+            Msg.info(String.format("[%d/%d] %s load changes: %d/ migrated: %d",
+                    ++i,
+                    nvm,
+                    vm.getName(),
+                    vm.getNbOfLoadChanges(),
+                    vm.getNbOfMigrations()));
             if(vm.isRunning()) {
                 Msg.info("VM is running");
                 Msg.info("VM is migrating: " + vm.isMigrating());
-                Msg.info("Daemon is suspended: " + vm.getDaemon().isSuspended());
-                vm.getDaemon().kill();
+                //Msg.info("Daemon is suspended: " + vm.getDaemon().isSuspended());
+                //vm.getDaemon().kill();
             }
             else {
                 Msg.info("VM is suspended");

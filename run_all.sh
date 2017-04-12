@@ -61,6 +61,7 @@ function run() {
 	SIM_ARGS="$SIM_ARGS -Dhosts.turn_off=$turn_off"
 	SIM_ARGS="$SIM_ARGS -Dload.mean=$mean"
 	SIM_ARGS="$SIM_ARGS -Dload.std=$std"
+	SIM_ARGS="$SIM_ARGS -Dload.file=config/5_hours.txt"
 
 	echo '----------------------------------------'
 	echo "Running $algo $implem with $n_nodes compute and $n_service service nodes turning off hosts: $turn_off, load.mean=$mean, load.std=$std"
